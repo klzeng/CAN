@@ -147,7 +147,10 @@ public class Peer implements Node{
             info += "---------------------------";
             return info;
         }else {
-            return "gotta implement.";
+            String info = "something is wrong.\n";
+            info += "passed in: " + peer + "\n";
+            info += "this node: " + this.node.name + "\n\n";
+            return info;
         }
     }
 
@@ -159,7 +162,15 @@ public class Peer implements Node{
             String info = this.view(this.node.name);
             viewed.add(this.node.name);
             for(Node_Base each: this.neighbors){
-                info += this.view(each.name);
+                try{
+                    Registry registry = LocateRegistry.getRegistry(each.name);
+                    Node next = (Node) registry.lookup("Node");
+                    info += next.view(each.name);
+                }catch (Exception e){
+                    System.out.println("forwarding view request failed:\n");
+                    System.out.println("tried to forward to:" + each.name);
+                    e.printStackTrace();
+                }
             }
             return info;
         }
