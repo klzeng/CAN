@@ -145,10 +145,9 @@ public class Join {
         else {
             try{
                 String name = "Node";
-                Registry registry = LocateRegistry.getRegistry(args[0]);
+                Registry registry = LocateRegistry.getRegistry("Zengs-Macbook.fios-router.home");
                 Node bootNode = (Node) registry.lookup(name);
                 Scanner scan = new Scanner(System.in);
-
             }catch (Exception e){
                 e.printStackTrace();
             }

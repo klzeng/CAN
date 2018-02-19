@@ -62,12 +62,17 @@ public class Peer implements Node{
     public String search(String keyword, LinkedList<String> path) {
         Point destPoint = this.computeHash(keyword);
         if(this.node.inZone(destPoint)){
+//            System.out.println("\ncontents in this node:");
+//            for(String each: this.contents) System.out.println(each);
+//            System.out.println("keyword is: " + keyword);
             if(this.contents.contains(keyword)){
                 String reply = "Found in node:\n";
                 reply += this.node.toString();
                 return this.node.IP + "\n" + reply;
+            }else {
+                return "Failure in destination";
             }
-            return "Failure";
+
         }
 
         path.add(this.node.name);
@@ -84,7 +89,7 @@ public class Peer implements Node{
             }
         }
 
-        return "Failure";
+        return "Failure, could not find keyword in the CAN.";
 
     }
 
@@ -92,13 +97,14 @@ public class Peer implements Node{
     public String view(String peer) {
         if(this.node.name.contentEquals(peer)){
 
-            String info = "\n\nInfo of " + peer + "\n\n";
+            String info = "---------------------------\n";
+            info += "\nInfo of " + peer + "\n";
             info += this.node.toString();
-            info += "\nneighbors:\n";
+            info += "neighbors:\n";
             for(Node_Base each : this.neighbors){
                 info += each.name + "\n";
             }
-            info += "---------------------------\n";
+            info += "\n";
             info += "keywords in this node:\n";
             for(String each: this.contents){
                 info += each + "\n";
@@ -677,13 +683,11 @@ class Node_Base{
 
     public String toString(){
         String ret = "";
-        ret += "\n------------------\n";
         ret += "name: " + this.name + "\n";
         ret += "IP  :" + this.IP + '\n';
         for(Zone zone : zones){
-            ret += "\nzone:" + zone.toString() + "\n";
+            ret += "zone:" + zone.toString() + "\n";
         }
-        ret += "\n------------------\n";
         return ret;
     }
 

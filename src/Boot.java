@@ -78,6 +78,7 @@ public class Boot {
                 if(cmd.contentEquals("insert")){
                     reply += "\nRoute to insert node:\n";
                     if(inputs.length ==2){
+                        arg = arg.split("\"")[1];
                         reply += bootNode.insert(arg, path);
                     }else {
                         inputs = input.split("\"");
