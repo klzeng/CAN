@@ -9,6 +9,8 @@ import java.net.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.LinkedList;
+import java.util.Scanner;
 
 
 public class Boot {
@@ -56,6 +58,60 @@ public class Boot {
             System.out.println("HOST_NAME: " + bootNode.node.name);
             System.out.println("HOST_IP: " + bootNode.node.IP);
             System.out.println("------------------------");
+            System.out.println("command you could issue:\n");
+            System.out.println("insert, search, view, leave\n");
+            System.out.println("------------------------");
+
+            Scanner scan = new Scanner(System.in);
+            while (true){
+                System.out.print("> ");
+                String input = scan.nextLine();
+                String inputs[] = input.split(" ");
+                String cmd = inputs[0];
+                String arg = "";
+                if(inputs.length > 1){
+                    arg = inputs[1];
+                }
+
+                String reply = "";
+                if(cmd.contentEquals("insert")){
+                    reply += "\nRoute to insert node:\n";
+                    if(inputs.length ==2){
+                        reply += bootNode.insert(arg);
+                    }else {
+                        inputs = input.split("\"");
+                        if(inputs.length != 2){
+                            System.out.println("usage: insert \"keyword\"");
+                            continue;
+                        }
+                        reply += bootNode.insert(inputs[1]);
+                    }
+                }else if(cmd.contentEquals("view")){
+                    if(arg.contentEquals("")){
+                        LinkedList<String> viewed = new LinkedList<String>();
+                        reply = bootNode.view(viewed);
+                    }else {
+                        reply = bootNode.view(arg);
+                    }
+                }else if(cmd.contentEquals("leave")){
+                    System.out.println("Issue leave on Bootstrap node make it unscalable(in my implementation).\n");
+                    reply = bootNode.leave();
+                }else if(cmd.contentEquals("search")){
+                    reply += "\nSearching Route:";
+                    if(inputs.length ==2){
+                        reply = bootNode.search(arg);
+                    }else {
+                        inputs = input.split("\"");
+                        if(inputs.length != 2){
+                            System.out.println("usage: search \"keyword\"");
+                            continue;
+                        }
+                        reply = bootNode.search(inputs[1]);
+                    }
+                }
+
+                System.out.println(reply);
+            }
         }catch (Exception e){
             System.err.println("BootStrap expection:");
             e.printStackTrace();

@@ -40,32 +40,137 @@ public class Peer implements Node{
     }
 
     @Override
-    public float[] join(String peer) {
-        float x = (float) (Math.random()*10);
-        float y = (float) (Math.random()*10);
-        Point destPoint = new Point(x, y);
-        System.out.println("\n the point chosed to join: " + destPoint.toString());
+    public float[] getCoordnts() {
+        return this.node.zone.getCoordinateArray();
+    }
+
+    @Override
+    public LinkedList<String> join(String peer, float[] destPointArray) {
+//        float x = (float) (Math.random()*10);
+//        float y = (float) (Math.random()*10);
+        Point destPoint = new Point(destPointArray[0], destPointArray[1]);
+        System.out.println("--------------------------------\n");
+        System.out.println("Notification - New Node Joining:\n\n");
+        System.out.println("\nthe point chosed to join: " + destPoint.toString());
         if(this.node.zone.inZone(destPoint)){
 
             Zone splitOut = this.splitZone(destPoint);
-            System.out.println("\n the zone to split out: " + splitOut.toString());
-            System.out.println("\n my zone is: " + this.node.zone.toString());
-
+            System.out.println("\nthe zone to split out: " + splitOut.toString());
+            System.out.println("\nmy zone is: " + this.node.zone.toString());
 
             // add new neighbor
-            Node_Base newNeighbor = new Node_Base();
-            newNeighbor.setName(peer);
-            try {
-                newNeighbor.setIP(InetAddress.getByName(peer).getHostAddress());
-            } catch (Exception e){
-                e.printStackTrace();
+            Node_Base newNeighbor = this.addnewNeighbor(peer, splitOut.getCoordinateArray());
+
+            LinkedList<String> ret = new LinkedList<String>();
+            ret.add(new String(Float.toString(splitOut.start_point.x)));
+            ret.add(new String(Float.toString(splitOut.start_point.y)));
+            ret.add(new String(Float.toString(splitOut.end_point.x)));
+            ret.add(new String(Float.toString(splitOut.end_point.y)));
+            ret.add(this.node.name);
+
+            for(Node_Base each : this.neighbors){
+                // notify neighbors new node joined
+                if(each.name == newNeighbor.name) continue;
+
+                try {
+                    Registry registry = LocateRegistry.getRegistry(each.name);
+                    Node neighbor = (Node) registry.lookup("Node");
+                    // if need to add the new node as neighbor
+                    boolean neighborOfNew = neighbor.updateNeighbors(newNeighbor.name, newNeighbor.zone.getCoordinateArray());
+                    if(neighborOfNew){
+                        ret.add(each.name);
+                    }
+                    // if need to remove the old node from neighbors
+                    neighbor.updateNeighbors(this.node.name, this.node.zone.getCoordinateArray());
+                }catch (Exception e){
+                    System.out.println("notify neighbor failed!");
+                    e.printStackTrace();
+                }
+
+                if(!this.isNeighbor(each.zone.getCoordinateArray())) this.neighbors.remove(each);
             }
-            newNeighbor.set_zone(splitOut.start_point, splitOut.end_point);
+
             this.neighbors.add(newNeighbor);
-            return splitOut.getCoordinateArray();
+            System.out.println("\n\nSuccees!\n--------------------------------\n");
+            return ret;
         }else {
-            return null;
+            Node_Base closerNode = this.route2next(destPoint);
+            if( closerNode != null){
+                try{
+                    Registry registry = LocateRegistry.getRegistry(closerNode.name);
+                    Node node  = (Node) registry.lookup("Node");
+                    return node.join(peer, destPointArray);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
         }
+
+        return null;
+    }
+
+    @Override
+    public boolean updateNeighbors(String newNeighbor, float[] coordnts) {
+        Point start = new Point(coordnts[0], coordnts[1]);
+        Point end = new Point(coordnts[2], coordnts[3]);
+
+        if(this.isNeighbor(coordnts)) {
+            this.addnewNeighbor(newNeighbor, coordnts);
+            return true;
+        }
+        else {
+            for(Node_Base each : this.neighbors){
+                if( each.name == newNeighbor){
+                    this.neighbors.remove(each);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public Node_Base addnewNeighbor(String neighborName, float[] coordnts){
+
+        Node_Base newNeighbor = new Node_Base();
+        newNeighbor.setName(neighborName);
+
+        try {
+            newNeighbor.setIP(InetAddress.getByName(neighborName).getHostAddress());
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        Point start = new Point(coordnts[0], coordnts[1]);
+        Point end =  new Point(coordnts[2], coordnts[3]);
+        newNeighbor.set_zone(start, end);
+        this.neighbors.add(newNeighbor);
+
+        return newNeighbor;
+    }
+
+    public boolean isNeighbor(float[] coordnts){
+
+        Point start = new Point(coordnts[0], coordnts[1]);
+        Point end = new Point(coordnts[2], coordnts[3]);
+
+        if( start.y <= this.node.zone.start_point.y && end.y >= this.node.zone.end_point.y ||
+                start.y >= this.node.zone.start_point.y && end.y <= this.node.zone.end_point.y){
+            // y axes collapse
+            if( start.x == this.node.zone.end_point.x || end.x == this.node.zone.start_point.x){
+                // contiguous
+                return true;
+            }
+        }
+
+        if( start.x <= this.node.zone.start_point.x && end.x >= this.node.zone.end_point.x ||
+                start.x >= this.node.zone.start_point.x && end.x <= this.node.zone.end_point.x){
+            // x axes collapse
+            if( start.y == this.node.zone.end_point.y || end.y == this.node.zone.start_point.y){
+                // contiguous
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -79,9 +184,9 @@ public class Peer implements Node{
         Point destPoint = this.computeHash(keyword);
         if(this.node.zone.inZone(destPoint)){
             this.contents.add(keyword);
-            String reply = "Stored in node:\n";
+            String reply = "\nStored in node:\n";
             reply += this.node.toString();
-            return this.node.IP + "\n" + reply;
+            return this.node.IP + "\n--->" + reply;
         }else {
             Node_Base nextNeighbor = this.route2next(destPoint);
 
@@ -300,13 +405,7 @@ public class Peer implements Node{
         return nextNeighbor;
     }
 
-
 }
-
-//class content{
-//    String key;
-//    File file;
-//}
 
 /*
  * Node_Base to provide the very basic info of a node:
@@ -316,16 +415,6 @@ class Node_Base{
     protected String name;
     protected String IP;
     protected Zone zone;
-
-//    public Node_Base(String name){
-//        this.name = name;
-//        try{
-//            this.IP = InetAddress.getLocalHost().getHostAddress();
-//        }catch (UnknownHostException e){
-//            System.err.println("can't get the IP of node.");
-//            e.printStackTrace();
-//        }
-//    }
 
     public Node_Base(){
         this.zone = new Zone();
@@ -345,11 +434,11 @@ class Node_Base{
     }
 
     public String toString(){
-        String ret = "------------------\n";
+        String ret = "\n------------------\n";
         ret += "name: " + this.name + "\n";
         ret += "IP  :" + this.IP + '\n';
         ret += "zone:" + this.zone.toString();
-        ret += "\n------------------";
+        ret += "\n------------------\n";
         return ret;
     }
 

@@ -12,7 +12,7 @@ public interface Node extends Remote{
 
     public String search(String keyword) throws RemoteException;
 
-    public float[] join(String peer) throws RemoteException;
+    public LinkedList<String> join(String peer, float[] destPointArray) throws RemoteException;
 
     public float[] join() throws RemoteException;
 
@@ -25,5 +25,9 @@ public interface Node extends Remote{
     public String testInvoke(String cmd) throws RemoteException;
 
     public String cmdDispatch(String input) throws RemoteException;
+
+    public boolean updateNeighbors(String newNeighbor, float[] coordtns) throws RemoteException;
+
+    public float[] getCoordnts() throws RemoteException;
 
 }
