@@ -8,11 +8,11 @@ import java.util.LinkedList;
  */
 public interface Node extends Remote{
 
-    public String insert(String keyword) throws RemoteException;
+    public String insert(String keyword, LinkedList<String> path) throws RemoteException;
 
-    public String search(String keyword) throws RemoteException;
+    public String search(String keyword, LinkedList<String> path) throws RemoteException;
 
-    public LinkedList<String> join(String peer, float[] destPointArray) throws RemoteException;
+    public LinkedList<String> join(String peer, float[] destPointArray, LinkedList<String> path) throws RemoteException;
 
     public float[] join() throws RemoteException;
 
@@ -20,14 +20,16 @@ public interface Node extends Remote{
 
     public String view(LinkedList<String> viewed) throws RemoteException;
 
-    public String leave() throws RemoteException;
+    public void leave() throws RemoteException;
 
     public String testInvoke(String cmd) throws RemoteException;
 
     public String cmdDispatch(String input) throws RemoteException;
 
-    public boolean updateNeighbors(String newNeighbor, float[] coordtns) throws RemoteException;
+    public boolean updateNeighbors(String newNeighbor, LinkedList<float[]> coordtns, boolean leaving, boolean updateCoord) throws RemoteException;
 
-    public float[] getCoordnts() throws RemoteException;
+    public LinkedList<float[]> getCoordnts() throws RemoteException;
+
+    public LinkedList<float[]> takeOver(LinkedList<float[]> coordnts, LinkedList<String> contents) throws RemoteException;
 
 }

@@ -46,7 +46,7 @@ public class Boot {
             }
         }
 
-        bootNode.set_zone(new Zone(start_point, end_point));
+        bootNode.addZone(new Zone(start_point, end_point));
 
         try{
             // register it
@@ -74,17 +74,18 @@ public class Boot {
                 }
 
                 String reply = "";
+                LinkedList<String> path = new LinkedList<String>();
                 if(cmd.contentEquals("insert")){
                     reply += "\nRoute to insert node:\n";
                     if(inputs.length ==2){
-                        reply += bootNode.insert(arg);
+                        reply += bootNode.insert(arg, path);
                     }else {
                         inputs = input.split("\"");
                         if(inputs.length != 2){
                             System.out.println("usage: insert \"keyword\"");
                             continue;
                         }
-                        reply += bootNode.insert(inputs[1]);
+                        reply += bootNode.insert(inputs[1], path);
                     }
                 }else if(cmd.contentEquals("view")){
                     if(arg.contentEquals("")){
@@ -95,18 +96,18 @@ public class Boot {
                     }
                 }else if(cmd.contentEquals("leave")){
                     System.out.println("Issue leave on Bootstrap node make it unscalable(in my implementation).\n");
-                    reply = bootNode.leave();
+                    bootNode.leave();
                 }else if(cmd.contentEquals("search")){
                     reply += "\nSearching Route:";
                     if(inputs.length ==2){
-                        reply = bootNode.search(arg);
+                        reply = bootNode.search(arg, path);
                     }else {
                         inputs = input.split("\"");
                         if(inputs.length != 2){
                             System.out.println("usage: search \"keyword\"");
                             continue;
                         }
-                        reply = bootNode.search(inputs[1]);
+                        reply = bootNode.search(inputs[1], path);
                     }
                 }
 

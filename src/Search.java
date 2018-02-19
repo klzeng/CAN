@@ -1,6 +1,7 @@
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.LinkedList;
 
 public class Search {
 
@@ -19,7 +20,8 @@ public class Search {
             String name = "Node";
             Registry registry = LocateRegistry.getRegistry(args[1]);
             Node node = (Node) registry.lookup(name);
-            String reply = node.search(args[0]);
+            LinkedList<String> path =  new LinkedList<String>();
+            String reply = node.search(args[0], path);
             String response = "-----------------------------------------\nSearching ...\nIP Route:\n";
             response += InetAddress.getByName(args[1]).getHostAddress() + "->\n" + reply;
             System.out.println(response);

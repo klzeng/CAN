@@ -1,6 +1,7 @@
 import java.net.InetAddress;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.LinkedList;
 
 public class Insert {
 
@@ -19,7 +20,8 @@ public class Insert {
             String name = "Node";
             Registry registry = LocateRegistry.getRegistry(args[1]);
             Node node = (Node) registry.lookup(name);
-            String reply = node.insert(args[0]);
+            LinkedList<String> path = new LinkedList<String>();
+            String reply = node.insert(args[0], path);
             String response = "-----------------------------------------\nIP Route:\n";
             response += InetAddress.getByName(args[1]).getHostAddress() + "->\n" + reply;
             System.out.println(response);

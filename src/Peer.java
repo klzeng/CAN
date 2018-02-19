@@ -28,174 +28,27 @@ public class Peer implements Node{
     //---------------------------------------------------------
     // remote methods
 
-
+    // Main Commands: insert, search, view, join, leave
     @Override
-    public String cmdDispatch(String input) {
-        String inputs[] = input.split(" ");
-        String cmd = inputs[0];
-        if(input.length() == 2){
-            String arg = inputs[1];
-        }
-        return null;
-    }
-
-    @Override
-    public float[] getCoordnts() {
-        return this.node.zone.getCoordinateArray();
-    }
-
-    @Override
-    public LinkedList<String> join(String peer, float[] destPointArray) {
-//        float x = (float) (Math.random()*10);
-//        float y = (float) (Math.random()*10);
-        Point destPoint = new Point(destPointArray[0], destPointArray[1]);
-        System.out.println("--------------------------------\n");
-        System.out.println("Notification - New Node Joining:\n\n");
-        System.out.println("\nthe point chosed to join: " + destPoint.toString());
-        if(this.node.zone.inZone(destPoint)){
-
-            Zone splitOut = this.splitZone(destPoint);
-            System.out.println("\nthe zone to split out: " + splitOut.toString());
-            System.out.println("\nmy zone is: " + this.node.zone.toString());
-
-            // add new neighbor
-            Node_Base newNeighbor = this.addnewNeighbor(peer, splitOut.getCoordinateArray());
-
-            LinkedList<String> ret = new LinkedList<String>();
-            ret.add(new String(Float.toString(splitOut.start_point.x)));
-            ret.add(new String(Float.toString(splitOut.start_point.y)));
-            ret.add(new String(Float.toString(splitOut.end_point.x)));
-            ret.add(new String(Float.toString(splitOut.end_point.y)));
-            ret.add(this.node.name);
-
-            for(Node_Base each : this.neighbors){
-                // notify neighbors new node joined
-                if(each.name == newNeighbor.name) continue;
-
-                try {
-                    Registry registry = LocateRegistry.getRegistry(each.name);
-                    Node neighbor = (Node) registry.lookup("Node");
-                    // if need to add the new node as neighbor
-                    boolean neighborOfNew = neighbor.updateNeighbors(newNeighbor.name, newNeighbor.zone.getCoordinateArray());
-                    if(neighborOfNew){
-                        ret.add(each.name);
-                    }
-                    // if need to remove the old node from neighbors
-                    neighbor.updateNeighbors(this.node.name, this.node.zone.getCoordinateArray());
-                }catch (Exception e){
-                    System.out.println("notify neighbor failed!");
-                    e.printStackTrace();
-                }
-
-                if(!this.isNeighbor(each.zone.getCoordinateArray())) this.neighbors.remove(each);
-            }
-
-            this.neighbors.add(newNeighbor);
-            System.out.println("\n\nSuccees!\n--------------------------------\n");
-            return ret;
-        }else {
-            Node_Base closerNode = this.route2next(destPoint);
-            if( closerNode != null){
-                try{
-                    Registry registry = LocateRegistry.getRegistry(closerNode.name);
-                    Node node  = (Node) registry.lookup("Node");
-                    return node.join(peer, destPointArray);
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return null;
-    }
-
-    @Override
-    public boolean updateNeighbors(String newNeighbor, float[] coordnts) {
-        Point start = new Point(coordnts[0], coordnts[1]);
-        Point end = new Point(coordnts[2], coordnts[3]);
-
-        if(this.isNeighbor(coordnts)) {
-            this.addnewNeighbor(newNeighbor, coordnts);
-            return true;
-        }
-        else {
-            for(Node_Base each : this.neighbors){
-                if( each.name == newNeighbor){
-                    this.neighbors.remove(each);
-                }
-            }
-        }
-
-        return false;
-    }
-
-    public Node_Base addnewNeighbor(String neighborName, float[] coordnts){
-
-        Node_Base newNeighbor = new Node_Base();
-        newNeighbor.setName(neighborName);
-
-        try {
-            newNeighbor.setIP(InetAddress.getByName(neighborName).getHostAddress());
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-        Point start = new Point(coordnts[0], coordnts[1]);
-        Point end =  new Point(coordnts[2], coordnts[3]);
-        newNeighbor.set_zone(start, end);
-        this.neighbors.add(newNeighbor);
-
-        return newNeighbor;
-    }
-
-    public boolean isNeighbor(float[] coordnts){
-
-        Point start = new Point(coordnts[0], coordnts[1]);
-        Point end = new Point(coordnts[2], coordnts[3]);
-
-        if( start.y <= this.node.zone.start_point.y && end.y >= this.node.zone.end_point.y ||
-                start.y >= this.node.zone.start_point.y && end.y <= this.node.zone.end_point.y){
-            // y axes collapse
-            if( start.x == this.node.zone.end_point.x || end.x == this.node.zone.start_point.x){
-                // contiguous
-                return true;
-            }
-        }
-
-        if( start.x <= this.node.zone.start_point.x && end.x >= this.node.zone.end_point.x ||
-                start.x >= this.node.zone.start_point.x && end.x <= this.node.zone.end_point.x){
-            // x axes collapse
-            if( start.y == this.node.zone.end_point.y || end.y == this.node.zone.start_point.y){
-                // contiguous
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    @Override
-    public float[] join() {
-        return null;
-    }
-
-    @Override
-    public String insert(String keyword) {
+    public String insert(String keyword, LinkedList<String> path) {
 
         Point destPoint = this.computeHash(keyword);
-        if(this.node.zone.inZone(destPoint)){
+
+        if(this.node.inZone(destPoint)){
             this.contents.add(keyword);
             String reply = "\nStored in node:\n";
             reply += this.node.toString();
             return this.node.IP + "\n--->" + reply;
         }else {
-            Node_Base nextNeighbor = this.route2next(destPoint);
+            path.add(this.node.name);
+            Node_Base nextNeighbor = this.route2next(destPoint, path);
 
             if(nextNeighbor != null){
                 try {
                     String name = "Node";
                     Registry registry = LocateRegistry.getRegistry(nextNeighbor.name);
                     Node node = (Node) registry.lookup(name);
-                    return node.insert(keyword);
+                    return node.insert(keyword, path);
                 }catch (Exception e){
                     e.printStackTrace();
                 }
@@ -206,9 +59,9 @@ public class Peer implements Node{
     }
 
     @Override
-    public String search(String keyword) {
+    public String search(String keyword, LinkedList<String> path) {
         Point destPoint = this.computeHash(keyword);
-        if(this.node.zone.inZone(destPoint)){
+        if(this.node.inZone(destPoint)){
             if(this.contents.contains(keyword)){
                 String reply = "Found in node:\n";
                 reply += this.node.toString();
@@ -217,14 +70,15 @@ public class Peer implements Node{
             return "Failure";
         }
 
-        Node_Base nextNeighbor = this.route2next(destPoint);
+        path.add(this.node.name);
+        Node_Base nextNeighbor = this.route2next(destPoint, path);
 
         if(nextNeighbor != null){
             try {
                 String name = "Node";
                 Registry registry = LocateRegistry.getRegistry(nextNeighbor.name);
                 Node node = (Node) registry.lookup(name);
-                return node.search(keyword);
+                return node.search(keyword, path);
             }catch (Exception e){
                 e.printStackTrace();
             }
@@ -282,9 +136,314 @@ public class Peer implements Node{
     }
 
     @Override
-    public String leave() {
-        return "";
+    public LinkedList<String> join(String peer, float[] destPointArray, LinkedList<String> path) {
+        Point destPoint = new Point(destPointArray[0], destPointArray[1]);
+
+        if(this.node.inZone(destPoint)){
+            System.out.println("--------------------------------\n");
+            System.out.println("Notification - New Node Joining:\n\n");
+            System.out.println("\nthe point chosed to join: " + destPoint.toString());
+
+            for(Zone zone : this.node.zones){
+                if(zone.inZone(destPoint)){
+                    Zone splitOut = this.splitZone(zone, destPoint);
+                    System.out.println("\nbefore split: " + this.node.toString());
+                    System.out.println("\nthe zone to split out: " + splitOut.toString());
+
+                    // add new neighbor
+                    LinkedList<float[]> newNeighborCoord = new LinkedList<float[]>();
+                    newNeighborCoord.add(splitOut.getCoordinateArray());
+                    Node_Base newNeighbor = this.addnewNeighbor(peer, newNeighborCoord);
+
+                    LinkedList<String> ret = new LinkedList<String>();
+                    ret.add(new String(Float.toString(splitOut.start_point.x)));
+                    ret.add(new String(Float.toString(splitOut.start_point.y)));
+                    ret.add(new String(Float.toString(splitOut.end_point.x)));
+                    ret.add(new String(Float.toString(splitOut.end_point.y)));
+                    ret.add(this.node.name);
+
+                    LinkedList<Node_Base> toRemove = new LinkedList<Node_Base>();
+                    for(Node_Base each : this.neighbors){
+                        // notify neighbors new node joined
+                        if(each.name == newNeighbor.name) continue;
+
+                        try {
+                            Registry registry = LocateRegistry.getRegistry(each.name);
+                            Node neighbor = (Node) registry.lookup("Node");
+                            // if need to add the new node as neighbor
+                            boolean neighborOfNew = neighbor.updateNeighbors(newNeighbor.name, newNeighbor.getCoordinateArray(), false,false);
+                            if(neighborOfNew){
+                                ret.add(each.name);
+                            }
+                            // if need to remove the old node from neighbors
+                            neighbor.updateNeighbors(this.node.name, this.node.getCoordinateArray(), false, false);
+                        }catch (Exception e){
+                            System.out.println("notify neighbor failed!");
+                            e.printStackTrace();
+                        }
+
+                        if(!this.isNeighbor(each.getCoordinateArray()))toRemove.add(each);
+                    }
+
+                    for(Node_Base each: toRemove) this.neighbors.remove(each);
+
+                    this.neighbors.add(newNeighbor);
+                    ret.add("KEYWORDS");
+                    LinkedList<String> toRemoveKW = new LinkedList<String>();
+                    for(String keyword : this.contents){
+                        if(! this.node.inZone(this.computeHash(keyword))){
+                            ret.add(keyword);
+                            toRemoveKW.add(keyword);
+                        }
+                    }
+                    for(String each: toRemoveKW) this.contents.remove(each);
+
+                    System.out.println("\n\nSuccees!\n--------------------------------\n");
+                    return ret;
+                }
+            }
+
+        }else {
+            path.add(this.node.name);
+            Node_Base closerNode = this.route2next(destPoint, path);
+            if( closerNode != null){
+                try{
+                    Registry registry = LocateRegistry.getRegistry(closerNode.name);
+                    Node node  = (Node) registry.lookup("Node");
+                    return node.join(peer, destPointArray, path);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return null;
     }
+
+    /*
+     * when a node leave:
+     * - choose the neighbor to handover
+     * -- if could merge, choose to merge
+     * -- otherwise, give it to the smallest neighbor
+     * - call the chosen neighbor to takeover: zone and keywords
+     * - notify the neighbors its going to leave
+     * - leave
+     */
+    @Override
+    public void leave() {
+        // choose the neighbor to handover
+        Node_Base handOverNode = null;
+
+        // try to find the neighbor could merge -> same area
+        for(Node_Base neighbor: this.neighbors){
+            if(neighbor.area == this.node.area){
+                handOverNode = neighbor;
+                break;
+            }
+        }
+
+        // not mergeable neighbor, find the smallest neighbor
+        if(handOverNode == null){
+            handOverNode = this.neighbors.peek();
+            for(Node_Base neighbor :  this.neighbors){
+                if(neighbor.area < handOverNode.area){
+                    handOverNode = neighbor;
+                }
+            }
+        }
+
+        // call target node to take over
+        try{
+            Registry registry = LocateRegistry.getRegistry(handOverNode.name);
+            Node handOverHost = (Node) registry.lookup("Node");
+            handOverHost.takeOver(this.node.getCoordinateArray(), this.contents);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        // notify the neighbors its going to leave
+        for(Node_Base neighbor: this.neighbors){
+            try{
+                Registry registry = LocateRegistry.getRegistry(neighbor.name);
+                Node neighborHost = (Node) registry.lookup("Node");
+                neighborHost.updateNeighbors(this.node.name, new LinkedList<>(),true,false);
+                neighborHost.updateNeighbors(handOverNode.name, handOverNode.getCoordinateArray(), false,false);
+            }catch (Exception e){
+                e.printStackTrace();
+                System.out.println("Failure!");
+                System.exit(0);
+            }
+        }
+
+        System.out.println("   \nBYE!\n");
+        System.exit(0);
+    }
+
+    // helper remote methods
+
+    @Override
+    public String cmdDispatch(String input) {
+        String inputs[] = input.split(" ");
+        String cmd = inputs[0];
+        if(input.length() == 2){
+            String arg = inputs[1];
+        }
+        return null;
+    }
+
+    @Override
+    public LinkedList<float[]> getCoordnts() {
+        return this.node.getCoordinateArray();
+    }
+
+    @Override
+    public boolean updateNeighbors(String newNeighbor, LinkedList<float[]> coordnts, boolean leaving, boolean updateCoord) {
+
+        if(leaving){
+            Node_Base toRemove = null;
+            for(Node_Base each : this.neighbors){
+                if( each.name == newNeighbor) toRemove = each;
+            }
+            this.neighbors.remove(toRemove);
+            return false;
+        }else {
+            // already a neighbor, comes from a node taking over zone of another
+            if(updateCoord){
+                for(Node_Base each: this.neighbors){
+                    if(each.name.contentEquals(newNeighbor)){
+                        each.zones.clear();
+                        each.addZones(coordnts);
+                        return true;
+                    }
+                }
+            }else {
+                // dont know if neighbor, comes from a node join
+                if(this.isNeighbor(coordnts)) {
+                    for(Node_Base each: this.neighbors){
+                        if(each.name.contentEquals(newNeighbor)) return true;
+                    }
+
+                    this.addnewNeighbor(newNeighbor, coordnts);
+                    return true;
+                }
+                else {
+                    Node_Base toRemove = null;
+                    for(Node_Base each : this.neighbors){
+                        if( each.name == newNeighbor) toRemove = each;
+                    }
+                    this.neighbors.remove(toRemove);
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isNeighbor(LinkedList<float[]> coordntArrays){
+
+        for(float[] coordnts : coordntArrays){
+            Point start = new Point(coordnts[0], coordnts[1]);
+            Point end = new Point(coordnts[2], coordnts[3]);
+
+            for(Zone zone: this.node.zones){
+                // y axes collapse
+                if( start.y <= zone.start_point.y && end.y >= zone.end_point.y ||
+                        start.y >= zone.start_point.y && end.y <= zone.end_point.y){
+                    if( start.x == zone.end_point.x || end.x == zone.start_point.x){
+                        // contiguous
+                        return true;
+                    }
+                }
+
+                // x axes collapse
+                if( start.x <= zone.start_point.x && end.x >= zone.end_point.x ||
+                        start.x >= zone.start_point.x && end.x <= zone.end_point.x){
+                    if( start.y == zone.end_point.y || end.y == zone.start_point.y){
+                        // contiguous
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public Node_Base addnewNeighbor(String neighborName, LinkedList<float[]> coordnts){
+
+        Node_Base newNeighbor = new Node_Base();
+        newNeighbor.setName(neighborName);
+
+        try {
+            newNeighbor.setIP(InetAddress.getByName(neighborName).getHostAddress());
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+
+        newNeighbor.addZones(coordnts);
+        this.neighbors.add(newNeighbor);
+
+        return newNeighbor;
+    }
+
+    @Override
+    public LinkedList<float[]> takeOver(LinkedList<float[]> coordnts, LinkedList<String> contents) {
+        LinkedList<float[]> toRemove = new LinkedList<float[]>();
+        for(float[] coordnt : coordnts){
+            Point start = new Point(coordnt[0], coordnt[1]);
+            Point end = new Point(coordnt[2], coordnt[3]);
+            Zone zone = new Zone(start,end);
+            for(Zone myzone : this.node.zones){
+                if(zone.getHeight() == myzone.getHeight() && zone.getWidth() == myzone.getWidth()){
+                    Zone newZone = null;
+                    if(zone.end_point.x == myzone.start_point.x){
+                        // two rectangles, zone to the left
+                        newZone = new Zone(zone.start_point, myzone.end_point);
+                    }
+                    if( myzone.end_point.x == zone.start_point.x){
+                        // two rectangles, myzone to the left
+                        newZone = new Zone(myzone.start_point, zone.end_point);
+                    }
+                    if(zone.end_point.y == myzone.start_point.y ){
+                        // two squares, zone under myzone
+                        newZone = new Zone(zone.start_point, myzone.end_point);
+
+                    }
+                    if(myzone.end_point.y == zone.start_point.y){
+                        // two squares, myzone under zone
+                        newZone = new Zone(myzone.start_point, zone.end_point);
+                    }
+                    this.node.setZone(myzone, newZone);
+                    toRemove.add(coordnt);
+                    break;
+                }
+            }
+        }
+
+        for(float[] each: toRemove) coordnts.remove(each);
+
+        this.node.addZones(coordnts);
+        for(String content: contents) this.contents.add(content);
+
+        // notify its neighbors to update its coordinates
+        for(Node_Base neighbor : this.neighbors){
+            try{
+                Registry registry =  LocateRegistry.getRegistry(neighbor.name);
+                Node neighborHost = (Node)registry.lookup("Node");
+                neighborHost.updateNeighbors(this.node.name, this.node.getCoordinateArray(), false, true);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        return this.node.getCoordinateArray();
+    }
+
+    @Override
+    public float[] join() {
+        return null;
+    }
+
+
 
     @Override
     public String testInvoke(String cmd){
@@ -299,8 +458,8 @@ public class Peer implements Node{
      * - splitZone: given a point, split the zone to two halves
      * - route2next: find the next neighbor closer to destination
      */
-    public void set_zone(Zone zone){
-        this.node.zone = zone ;
+    public void addZone(Zone zone){
+        this.node.addZone(zone.start_point, zone.end_point);
     }
 
     // computeHash: compute the point given a keyword
@@ -329,80 +488,104 @@ public class Peer implements Node{
      * - argarment: Point
      * - return: the halve zone contains the input Point
      */
-    public Zone splitZone(Point point){
+    public Zone splitZone(Zone zone, Point point){
 
         // first split to two halves
         // if square zone, split vertically, otherwise split horizontally
-        float width = this.node.zone.getWidth();
-        float height = this.node.zone.getHeight();
+        float width = zone.getWidth();
+        float height = zone.getHeight();
         Zone zone1, zone2;
         if(width == height){
-            float midX = this.node.zone.start_point.x + width/2;
-            Point midPointTop = new Point(midX, this.node.zone.end_point.y);
-            Point midPointBottom = new Point(midX, this.node.zone.start_point.y);
-            zone1 = new Zone(this.node.zone.start_point, midPointTop); // left halve
-            zone2 = new Zone(midPointBottom, this.node.zone.end_point);// right halve
+            float midX = zone.start_point.x + width/2;
+            Point midPointTop = new Point(midX, zone.end_point.y);
+            Point midPointBottom = new Point(midX, zone.start_point.y);
+            zone1 = new Zone(zone.start_point, midPointTop); // left halve
+            zone2 = new Zone(midPointBottom, zone.end_point);// right halve
         }else {
-            float midY = this.node.zone.start_point.y + height/2;
-            Point midPointLeft = new Point(this.node.zone.start_point.x, midY);
-            Point midPointRight = new Point(this.node.zone.end_point.x, midY);
-            zone1 = new Zone(this.node.zone.start_point, midPointRight); // bottom halve
-            zone2 = new Zone(midPointLeft, this.node.zone.end_point);
+            float midY = zone.start_point.y + height/2;
+            Point midPointLeft = new Point(zone.start_point.x, midY);
+            Point midPointRight = new Point(zone.end_point.x, midY);
+            zone1 = new Zone(zone.start_point, midPointRight); // bottom halve
+            zone2 = new Zone(midPointLeft, zone.end_point);
         }
 
         if(zone1.inZone(point)){
-            this.set_zone(zone2);
+            this.node.setZone(zone, zone2);
             return zone1;
         }else {
-            this.set_zone(zone1);
+            this.node.setZone(zone, zone1);
             return zone2;
         }
     }
 
-    // route2next: find the next neighbor closer to destination
-    public Node_Base route2next(Point destPoint){
+    /*
+     * route2next: find the next neighbor closer to destination
+     * could be 3 situation:
+     * - point looking for is above then the zone of current node
+     * - point looking for is blow then the zone of current node
+     * - point looking for sit horizontally,
+     */
+    public Node_Base route2next(Point destPoint, LinkedList<String> path){
         // we go vertically then horizontally
-        float midX = this.node.zone.getMidX();
-        float midY = this.node.zone.getMidY();
-        Node_Base nextNeighbor = null;
-        for(Node_Base neighbor : this.neighbors){
-            if(destPoint.y > this.node.zone.end_point.y){
-                // higher than current zone
-                if(neighbor.zone.start_point.y > this.node.zone.end_point.y){
-                    if(destPoint.x > this.node.zone.end_point.x && neighbor.zone.start_point.x >= this.node.zone.start_point.x){
-                        nextNeighbor = neighbor;
-                        break;
+
+        // above the zone
+        if(destPoint.y > this.node.yTop){
+            for(Node_Base neighbor : this.neighbors){
+                if(path.contains(neighbor.name)) continue;
+
+                if(neighbor.yTop > this.node.yTop){
+                    // to the right
+                    if(destPoint.x > this.node.xLeft && neighbor.xLeft >= this.node.xLeft){
+                        return neighbor;
                     }
-                    if(destPoint.x < this.node.zone.start_point.x && neighbor.zone.end_point.x <= this.node.zone.end_point.x){
-                        nextNeighbor = neighbor;
-                        break;
+                    // to the left
+                    if(destPoint.x < this.node.xRight && neighbor.xRight <= this.node.xRight){
+                        return neighbor;
                     }
-                }
-            }else if(destPoint.y < this.node.zone.start_point.y){
-                // lower than current zone
-                if(neighbor.zone.start_point.y < this.node.zone.end_point.y){
-                    if(destPoint.x > this.node.zone.end_point.x && neighbor.zone.start_point.x >= this.node.zone.start_point.x){
-                        nextNeighbor = neighbor;
-                        break;
-                    }
-                    if(destPoint.x < this.node.zone.start_point.x && neighbor.zone.end_point.x <= this.node.zone.end_point.x){
-                        nextNeighbor = neighbor;
-                        break;
-                    }
-                }
-            }else {
-                // move horizontally
-                if(destPoint.x > this.node.zone.end_point.x && neighbor.zone.start_point.x >= this.node.zone.end_point.x){
-                    nextNeighbor = neighbor;
-                    break;
-                }
-                if(destPoint.x < this.node.zone.start_point.x && neighbor.zone.end_point.x <= this.node.zone.start_point.x){
-                    nextNeighbor = neighbor;
-                    break;
                 }
             }
         }
-        return nextNeighbor;
+
+        // below the zone
+        else  if(destPoint.y < this.node.yBottom){
+            for(Node_Base neighbor : this.neighbors){
+                if(path.contains(neighbor.name)) continue;
+
+                if(neighbor.yBottom < this.node.yBottom){
+                    // to the right
+                    if(destPoint.x > this.node.xLeft && neighbor.xLeft >= this.node.xLeft){
+                        return neighbor;
+                    }
+                    // to the left
+                    if(destPoint.x < this.node.xRight && neighbor.xRight <= this.node.xRight){
+                        return neighbor;
+                    }
+                }
+            }
+        }
+
+        // horizontally
+        else{
+            for(Node_Base neighbor : this.neighbors){
+                if(path.contains(neighbor.name)) continue;
+
+                if(neighbor.yTop < destPoint.y || neighbor.yBottom > destPoint.y) continue;
+
+                if(neighbor.yBottom < this.node.yBottom){
+                    // to the right
+                    if(destPoint.x > this.node.xLeft && neighbor.xLeft > this.node.xLeft){
+                        return neighbor;
+                    }
+                    // to the left
+                    if(destPoint.x < this.node.xRight && neighbor.xRight > this.node.xRight){
+                        return neighbor;
+                    }
+                }
+            }
+
+        }
+
+        return null;
     }
 
 }
@@ -414,15 +597,43 @@ public class Peer implements Node{
 class Node_Base{
     protected String name;
     protected String IP;
-    protected Zone zone;
+    protected LinkedList<Zone> zones;
+    protected float area;
+    protected float xLeft;
+    protected float xRight;
+    protected float yBottom;
+    protected float yTop;
 
     public Node_Base(){
-        this.zone = new Zone();
+        this.zones = new LinkedList<Zone>();
+        this.area = 0;
+        this.xLeft = this.xRight = this.yBottom = this.yTop = 0;
     }
 
-    public void set_zone(Point start, Point end){
-        this.zone.start_point = start;
-        this.zone.end_point = end;
+    public void setZone(Zone oldZone, Zone newZone){
+        this.zones.remove(oldZone);
+        this.update();
+        this.addZone(newZone.start_point, newZone.end_point);
+    }
+
+    public void addZone(Point start, Point end){
+        Zone newZone = new Zone();
+        newZone.start_point = start;
+        newZone.end_point = end;
+        this.zones.add(newZone);
+        this.area += newZone.getHeight()*newZone.getWidth();
+        if(start.x < this.xLeft) this.xLeft = start.x;
+        if(end.x > this.xRight) this.xRight = end.x;
+        if(start.y < this.yBottom)  this.yBottom = start.y;
+        if(end.y > this.yTop) this.yTop = end.y;
+    }
+
+    public void addZones(LinkedList<float[]> coordntsArray){
+        for(float[] each: coordntsArray){
+            Point start  = new Point(each[0], each[1]);
+            Point end = new Point(each[2], each[3]);
+            this.addZone(start, end);
+        }
     }
 
     public void setIP(String IP){
@@ -433,15 +644,47 @@ class Node_Base{
         this.name = name;
     }
 
+    public boolean inZone(Point point){
+        // iterate through all zones, call inZone on them.
+        for(Zone zone: zones){
+            if(zone.inZone(point)) return true;
+        }
+        return false;
+    }
+
+    public void update(){
+        this.area = 0;
+        this.xLeft = this.xRight = this.yBottom = this.yTop = 0;
+        for(Zone zone : this.zones){
+            this.area += zone.getHeight()*zone.getWidth();
+            if(zone.start_point.x < this.xLeft) this.xLeft = zone.start_point.x;
+            if(zone.end_point.x > this.xRight) this.xRight = zone.end_point.x;
+            if(zone.start_point.y < this.yBottom)  this.yBottom = zone.start_point.y;
+            if(zone.end_point.y > this.yTop) this.yTop = zone.end_point.y;
+        }
+    }
+
+    public LinkedList<float[]>  getCoordinateArray(){
+
+        LinkedList<float[]> ret= new LinkedList<float[]>();
+
+        for(Zone zone: this.zones){
+            ret.add(zone.getCoordinateArray());
+        }
+
+        return ret;
+    }
+
     public String toString(){
-        String ret = "\n------------------\n";
+        String ret = "";
+        ret += "\n------------------\n";
         ret += "name: " + this.name + "\n";
         ret += "IP  :" + this.IP + '\n';
-        ret += "zone:" + this.zone.toString();
+        for(Zone zone : zones){
+            ret += "\nzone:" + zone.toString() + "\n";
+        }
         ret += "\n------------------\n";
         return ret;
     }
 
 }
-
-
