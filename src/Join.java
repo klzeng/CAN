@@ -12,19 +12,16 @@ public class Join {
         }
 
         if(args.length != 0){
-            String hostName = args[0];
+            String newNodeName = args[0];
             try{
-                String name = "Node";
-                Registry registry = LocateRegistry.getRegistry("Zengs-Macbook.fios-router.home");
-                Node node = (Node) registry.lookup(name);
-                InetAddress hostIP = InetAddress.getByName(hostName);
-                String IP = hostIP.getHostAddress();
+                Registry registry = LocateRegistry.getRegistry(Peer.BOOTSTRAP_HOSTNAME, Peer.RMI_PORT);
+                Node bootNode = (Node) registry.lookup(Peer.BOOTSTRAP_HOSTNAME);
 
                 float x = (float) (Math.random()*10);
                 float y = (float) (Math.random()*10);
 
                 LinkedList<String> path2join = new LinkedList<String>();
-                LinkedList<String> joinInfo = node.join(hostName, new float[]{x,y}, path2join);
+                LinkedList<String> joinInfo = bootNode.join(newNodeName, new float[]{x,y}, path2join);
 
                 if(joinInfo == null) {
                     System.out.println("Failure!");
@@ -46,8 +43,11 @@ public class Join {
                 Zone zone = new Zone(start, end);
                 Peer peer = new Peer();
                 peer.addZone(zone);
+
+                InetAddress hostIP = InetAddress.getByName(newNodeName);
+                String IP = hostIP.getHostAddress();
                 peer.node.setIP(IP);
-                peer.node.setName(hostName);
+                peer.node.setName(newNodeName);
 
                 System.out.println("\nafter pooll:\n\n");
                 for(String each: joinInfo){
@@ -62,8 +62,8 @@ public class Join {
 
                     System.out.println("\nadding neighbor: " + neighbor + "\n");
 
-                    Registry registry1 = LocateRegistry.getRegistry(neighbor);
-                    Node toAdd = (Node) registry1.lookup("Node");
+                    Registry registry1 = LocateRegistry.getRegistry(neighbor, Peer.RMI_PORT);
+                    Node toAdd = (Node) registry1.lookup(neighbor);
                     LinkedList<float[]> zoneCoordnts = toAdd.getCoordnts();
 
                     String neighborIP = InetAddress.getByName(neighbor).getHostAddress();
@@ -81,9 +81,10 @@ public class Join {
                     peer.contents.add(keyword);
                 }
 
+                // set up done, now register it
                 Node stub = (Node) UnicastRemoteObject.exportObject(peer, 0);
-                Registry registry1 = LocateRegistry.getRegistry();
-                registry1.rebind(name,stub);
+                Registry registry1 = LocateRegistry.createRegistry(Peer.RMI_PORT);
+                registry1.rebind(newNodeName,stub);
                 System.out.println("\nJoined!\n\n");
                 System.out.println(peer.node.toString());
 
@@ -120,7 +121,6 @@ public class Join {
                             reply = peer.view(arg);
                         }
                     }else if(cmd.contentEquals("leave")){
-                        System.out.println("Issue leave on Bootstrap node make it unscalable(in my implementation).\n");
                         peer.leave();
                     }else if(cmd.contentEquals("search")){
                         reply += "\nSearching Route:";
@@ -145,7 +145,7 @@ public class Join {
         else {
             try{
                 String name = "Node";
-                Registry registry = LocateRegistry.getRegistry("Zengs-Macbook.fios-router.home");
+                Registry registry = LocateRegistry.getRegistry(Peer.BOOTSTRAP_HOSTNAME, Peer.RMI_PORT);
                 Node bootNode = (Node) registry.lookup(name);
                 Scanner scan = new Scanner(System.in);
             }catch (Exception e){

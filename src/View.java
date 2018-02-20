@@ -15,9 +15,8 @@ public class View {
             if(args.length==0){
                 // call the bootnode to view all nodes
                 try{
-                    String name = "Node";
-                    Registry registry = LocateRegistry.getRegistry("Zengs-Macbook.fios-router.home");
-                    Node node = (Node) registry.lookup(name);
+                    Registry registry = LocateRegistry.getRegistry(Peer.BOOTSTRAP_HOSTNAME, Peer.RMI_PORT);
+                    Node node = (Node) registry.lookup(Peer.BOOTSTRAP_HOSTNAME);
                     LinkedList<String> viwed = new LinkedList<String>();
                     String reply = node.view(viwed);;
                     System.out.println(reply);
@@ -26,10 +25,10 @@ public class View {
                 }
             }else {
                 try{
-                    String name = "Node";
-                    Registry registry = LocateRegistry.getRegistry(args[0]);
-                    Node node = (Node) registry.lookup(name);
-                    String reply = node.view(args[0]);;
+                    String nodeName = args[0];
+                    Registry registry = LocateRegistry.getRegistry(nodeName, Peer.RMI_PORT);
+                    Node node = (Node) registry.lookup(nodeName);
+                    String reply = node.view(nodeName);;
                     System.out.println(reply);
                 }catch(Exception e){
                     e.printStackTrace();

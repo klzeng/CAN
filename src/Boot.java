@@ -23,13 +23,12 @@ public class Boot {
         // initialize the boostrap node
         Point start_point = new Point(0,0);
         Point end_point = new Point(10,10);
-        String name = "Node";
 
         Peer bootNode = new Peer();
         if (args.length > 0){
             try{
                 InetAddress IP = InetAddress.getByName(args[0]);
-                bootNode.node.setName(IP.getHostName());
+                bootNode.node.setName("BOOT_NODE");
                 bootNode.node.setIP(new String(IP.getHostAddress()));
 
             }catch (UnknownHostException e) {
@@ -38,9 +37,9 @@ public class Boot {
             }
         }else {
             try{
-                InetAddress IP = InetAddress.getLocalHost();
-                bootNode.node.setName(IP.getHostName());
-                bootNode.node.setIP(new String(IP.getHostAddress()));
+                InetAddress host = InetAddress.getByName(Peer.BOOTSTRAP_HOSTNAME);
+                bootNode.node.setName(host.getHostName());
+                bootNode.node.setIP(new String(host.getHostAddress()));
             }catch (UnknownHostException e){
                 e.printStackTrace();
             }
@@ -51,8 +50,9 @@ public class Boot {
         try{
             // register it
             Node stub = (Node) UnicastRemoteObject.exportObject(bootNode, 0);
-            Registry registry = LocateRegistry.getRegistry();
-            registry.rebind(name, stub);
+            Registry registry = LocateRegistry.createRegistry(Peer.RMI_PORT);
+//            System.out.println(registry.list());
+            registry.rebind(bootNode.node.name, stub);
             System.out.println("------------------------");
             System.out.println("Bootstrap node bound");
             System.out.println("HOST_NAME: " + bootNode.node.name);

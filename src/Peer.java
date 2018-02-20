@@ -13,6 +13,10 @@ import java.util.LinkedList;
 
 
 public class Peer implements Node{
+    final static String BOOTSTRAP_HOSTNAME = "node31";
+    final static int RMI_PORT = 1100;
+    final static boolean DUBUG = true;
+
     Node_Base node;
     LinkedList<Node_Base> neighbors;
     LinkedList<String> contents;
@@ -34,20 +38,27 @@ public class Peer implements Node{
 
         Point destPoint = this.computeHash(keyword);
 
+        if(Peer.DUBUG){
+            System.out.println("\ninserting: " + keyword);
+            System.out.println("hash point: " + destPoint.toString());
+        }
+
+
         if(this.node.inZone(destPoint)){
             this.contents.add(keyword);
             String reply = "\nStored in node:\n";
             reply += this.node.toString();
             return this.node.IP + "\n--->" + reply;
         }else {
+            if(Peer.DUBUG){ System.out.println("not under my watch.");}
+
             path.add(this.node.name);
             Node_Base nextNeighbor = this.route2next(destPoint, path);
 
             if(nextNeighbor != null){
                 try {
-                    String name = "Node";
-                    Registry registry = LocateRegistry.getRegistry(nextNeighbor.name);
-                    Node node = (Node) registry.lookup(name);
+                    Registry registry = LocateRegistry.getRegistry(nextNeighbor.name, Peer.RMI_PORT);
+                    Node node = (Node) registry.lookup(nextNeighbor.name);
                     return node.insert(keyword, path);
                 }catch (Exception e){
                     e.printStackTrace();
@@ -80,9 +91,8 @@ public class Peer implements Node{
 
         if(nextNeighbor != null){
             try {
-                String name = "Node";
-                Registry registry = LocateRegistry.getRegistry(nextNeighbor.name);
-                Node node = (Node) registry.lookup(name);
+                Registry registry = LocateRegistry.getRegistry(nextNeighbor.name, Peer.RMI_PORT);
+                Node node = (Node) registry.lookup(nextNeighbor.name);
                 return node.search(keyword, path);
             }catch (Exception e){
                 e.printStackTrace();
@@ -98,9 +108,9 @@ public class Peer implements Node{
         if(this.node.name.contentEquals(peer)){
 
             String info = "---------------------------\n";
-            info += "\nInfo of " + peer + "\n";
+            info += "\nInfo of " + peer + "\n\n";
             info += this.node.toString();
-            info += "neighbors:\n";
+            info += "\nneighbors:\n";
             for(Node_Base each : this.neighbors){
                 info += each.name + "\n";
             }
@@ -128,8 +138,8 @@ public class Peer implements Node{
             viewed.add(this.node.name);
             for(Node_Base each: this.neighbors){
                 try{
-                    Registry registry = LocateRegistry.getRegistry(each.name);
-                    Node next = (Node) registry.lookup("Node");
+                    Registry registry = LocateRegistry.getRegistry(each.name, Peer.RMI_PORT);
+                    Node next = (Node) registry.lookup(each.name);
                     info += next.view(each.name);
                 }catch (Exception e){
                     System.out.println("forwarding view request failed:\n");
@@ -171,11 +181,11 @@ public class Peer implements Node{
                     LinkedList<Node_Base> toRemove = new LinkedList<Node_Base>();
                     for(Node_Base each : this.neighbors){
                         // notify neighbors new node joined
-                        if(each.name == newNeighbor.name) continue;
+                        if(each.name.contentEquals(newNeighbor.name)) continue;
 
                         try {
-                            Registry registry = LocateRegistry.getRegistry(each.name);
-                            Node neighbor = (Node) registry.lookup("Node");
+                            Registry registry = LocateRegistry.getRegistry(each.name, Peer.RMI_PORT);
+                            Node neighbor = (Node) registry.lookup(each.name);
                             // if need to add the new node as neighbor
                             boolean neighborOfNew = neighbor.updateNeighbors(newNeighbor.name, newNeighbor.getCoordinateArray(), false,false);
                             if(neighborOfNew){
@@ -193,7 +203,6 @@ public class Peer implements Node{
 
                     for(Node_Base each: toRemove) this.neighbors.remove(each);
 
-                    this.neighbors.add(newNeighbor);
                     ret.add("KEYWORDS");
                     LinkedList<String> toRemoveKW = new LinkedList<String>();
                     for(String keyword : this.contents){
@@ -208,14 +217,13 @@ public class Peer implements Node{
                     return ret;
                 }
             }
-
         }else {
             path.add(this.node.name);
             Node_Base closerNode = this.route2next(destPoint, path);
             if( closerNode != null){
                 try{
-                    Registry registry = LocateRegistry.getRegistry(closerNode.name);
-                    Node node  = (Node) registry.lookup("Node");
+                    Registry registry = LocateRegistry.getRegistry(closerNode.name, Peer.RMI_PORT);
+                    Node node  = (Node) registry.lookup(closerNode.name);
                     return node.join(peer, destPointArray, path);
                 }catch (Exception e){
                     e.printStackTrace();
@@ -260,8 +268,8 @@ public class Peer implements Node{
 
         // call target node to take over
         try{
-            Registry registry = LocateRegistry.getRegistry(handOverNode.name);
-            Node handOverHost = (Node) registry.lookup("Node");
+            Registry registry = LocateRegistry.getRegistry(handOverNode.name, Peer.RMI_PORT);
+            Node handOverHost = (Node) registry.lookup(handOverNode.name);
             handOverHost.takeOver(this.node.getCoordinateArray(), this.contents);
         }catch (Exception e){
             e.printStackTrace();
@@ -270,8 +278,8 @@ public class Peer implements Node{
         // notify the neighbors its going to leave
         for(Node_Base neighbor: this.neighbors){
             try{
-                Registry registry = LocateRegistry.getRegistry(neighbor.name);
-                Node neighborHost = (Node) registry.lookup("Node");
+                Registry registry = LocateRegistry.getRegistry(neighbor.name, Peer.RMI_PORT);
+                Node neighborHost = (Node) registry.lookup(neighbor.name);
                 neighborHost.updateNeighbors(this.node.name, new LinkedList<>(),true,false);
                 neighborHost.updateNeighbors(handOverNode.name, handOverNode.getCoordinateArray(), false,false);
             }catch (Exception e){
@@ -285,6 +293,8 @@ public class Peer implements Node{
         System.exit(0);
     }
 
+
+    // ------------------------------------------------
     // helper remote methods
 
     @Override
@@ -308,7 +318,7 @@ public class Peer implements Node{
         if(leaving){
             Node_Base toRemove = null;
             for(Node_Base each : this.neighbors){
-                if( each.name == newNeighbor) toRemove = each;
+                if( each.name.contentEquals(newNeighbor)) toRemove = each;
             }
             this.neighbors.remove(toRemove);
             return false;
@@ -335,7 +345,7 @@ public class Peer implements Node{
                 else {
                     Node_Base toRemove = null;
                     for(Node_Base each : this.neighbors){
-                        if( each.name == newNeighbor) toRemove = each;
+                        if( each.name.contentEquals(newNeighbor)) toRemove = each;
                     }
                     this.neighbors.remove(toRemove);
                 }
@@ -393,28 +403,51 @@ public class Peer implements Node{
 
     @Override
     public LinkedList<float[]> takeOver(LinkedList<float[]> coordnts, LinkedList<String> contents) {
+
         LinkedList<float[]> toRemove = new LinkedList<float[]>();
+
         for(float[] coordnt : coordnts){
             Point start = new Point(coordnt[0], coordnt[1]);
             Point end = new Point(coordnt[2], coordnt[3]);
             Zone zone = new Zone(start,end);
             for(Zone myzone : this.node.zones){
+                if(Peer.DUBUG){
+                    System.out.println("zone: height " + zone.getHeight() + "width " + zone.getWidth());
+                    System.out.println("myzone: height " + myzone.getHeight() + "width " + myzone.getWidth());
+                }
+
                 if(zone.getHeight() == myzone.getHeight() && zone.getWidth() == myzone.getWidth()){
+                    if(Peer.DUBUG){
+                        System.out.println("same area.");
+                    }
+
                     Zone newZone = null;
                     if(zone.end_point.x == myzone.start_point.x){
+                        if(Peer.DUBUG){
+                            System.out.println("two rectangles, zone to the left");
+                        }
                         // two rectangles, zone to the left
                         newZone = new Zone(zone.start_point, myzone.end_point);
                     }
                     if( myzone.end_point.x == zone.start_point.x){
+                        if(Peer.DUBUG){
+                            System.out.println("two rectangles, zone to the left");
+                        }
                         // two rectangles, myzone to the left
                         newZone = new Zone(myzone.start_point, zone.end_point);
                     }
                     if(zone.end_point.y == myzone.start_point.y ){
+                        if(Peer.DUBUG){
+                            System.out.println("two squares, zone under myzone");
+                        }
                         // two squares, zone under myzone
                         newZone = new Zone(zone.start_point, myzone.end_point);
 
                     }
                     if(myzone.end_point.y == zone.start_point.y){
+                        if(Peer.DUBUG){
+                            System.out.println("two squares, myzone under zone");
+                        }
                         // two squares, myzone under zone
                         newZone = new Zone(myzone.start_point, zone.end_point);
                     }
@@ -433,8 +466,8 @@ public class Peer implements Node{
         // notify its neighbors to update its coordinates
         for(Node_Base neighbor : this.neighbors){
             try{
-                Registry registry =  LocateRegistry.getRegistry(neighbor.name);
-                Node neighborHost = (Node)registry.lookup("Node");
+                Registry registry =  LocateRegistry.getRegistry(neighbor.name, Peer.RMI_PORT);
+                Node neighborHost = (Node)registry.lookup(neighbor.name);
                 neighborHost.updateNeighbors(this.node.name, this.node.getCoordinateArray(), false, true);
             }catch (Exception e){
                 e.printStackTrace();
@@ -534,10 +567,17 @@ public class Peer implements Node{
     public Node_Base route2next(Point destPoint, LinkedList<String> path){
         // we go vertically then horizontally
 
+        if (Peer.DUBUG){
+            System.out.println("looking for closer neighbor.");
+        }
         // above the zone
         if(destPoint.y > this.node.yTop){
+            if(Peer.DUBUG){System.out.println("above my zone");}
             for(Node_Base neighbor : this.neighbors){
                 if(path.contains(neighbor.name)) continue;
+
+                if(Peer.DUBUG){System.out.println("neighbor: " + neighbor.name);}
+                if(Peer.DUBUG){System.out.println(neighbor.xLeft + " " + neighbor.yBottom + " " + neighbor.xRight + " " + neighbor.yTop);}
 
                 if(neighbor.yTop > this.node.yTop){
                     // to the right
@@ -554,6 +594,7 @@ public class Peer implements Node{
 
         // below the zone
         else  if(destPoint.y < this.node.yBottom){
+            if(Peer.DUBUG){System.out.println("below my zone");}
             for(Node_Base neighbor : this.neighbors){
                 if(path.contains(neighbor.name)) continue;
 
@@ -572,18 +613,21 @@ public class Peer implements Node{
 
         // horizontally
         else{
+            if(Peer.DUBUG){System.out.println("horizontally");}
+
             for(Node_Base neighbor : this.neighbors){
+                if(Peer.DUBUG){System.out.println("candidate " + neighbor.name);}
                 if(path.contains(neighbor.name)) continue;
 
-                if(neighbor.yTop < destPoint.y || neighbor.yBottom > destPoint.y) continue;
-
-                if(neighbor.yBottom < this.node.yBottom){
+                if(neighbor.yBottom <= destPoint.y && neighbor.yTop >= destPoint.y){
                     // to the right
                     if(destPoint.x > this.node.xLeft && neighbor.xLeft > this.node.xLeft){
+                        if(Peer.DUBUG){System.out.println("to the right");}
                         return neighbor;
                     }
                     // to the left
-                    if(destPoint.x < this.node.xRight && neighbor.xRight > this.node.xRight){
+                    if(destPoint.x < this.node.xRight && neighbor.xRight < this.node.xRight){
+                        if(Peer.DUBUG){System.out.println("to the left");}
                         return neighbor;
                     }
                 }
@@ -626,6 +670,12 @@ class Node_Base{
         Zone newZone = new Zone();
         newZone.start_point = start;
         newZone.end_point = end;
+        if(this.zones.isEmpty()){
+            this.xLeft = start.x;
+            this.xRight = end.x;
+            this.yBottom = start.y;
+            this.yTop = end.y;
+        }
         this.zones.add(newZone);
         this.area += newZone.getHeight()*newZone.getWidth();
         if(start.x < this.xLeft) this.xLeft = start.x;

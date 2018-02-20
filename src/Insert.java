@@ -17,13 +17,13 @@ public class Insert {
         }
 
         try{
-            String name = "Node";
-            Registry registry = LocateRegistry.getRegistry(args[1]);
-            Node node = (Node) registry.lookup(name);
+            String nodeName = args[1];
+            Registry registry = LocateRegistry.getRegistry(nodeName, Peer.RMI_PORT);
+            Node node = (Node) registry.lookup(nodeName);
             LinkedList<String> path = new LinkedList<String>();
             String reply = node.insert(args[0], path);
             String response = "-----------------------------------------\nIP Route:\n";
-            response += InetAddress.getByName(args[1]).getHostAddress() + "->\n" + reply;
+            response += InetAddress.getByName(nodeName).getHostAddress() + "->\n" + reply;
             System.out.println(response);
         }catch(Exception e){
             e.printStackTrace();
