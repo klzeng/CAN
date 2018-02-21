@@ -28,10 +28,6 @@ public class Join {
                     System.exit(0);
                 }
 
-                System.out.println("\nbefore pooll:\n\n");
-                for(String each: joinInfo){
-                    System.out.println(each);
-                }
 
                 // set up the zone of the new node
                 float xStart = Float.parseFloat(joinInfo.poll());
@@ -49,18 +45,12 @@ public class Join {
                 peer.node.setIP(IP);
                 peer.node.setName(newNodeName);
 
-                System.out.println("\nafter pooll:\n\n");
-                for(String each: joinInfo){
-                    System.out.println(each);
-                }
-
-
                 // set up the neighbors of the new node
                 while(!joinInfo.isEmpty()){
                     String neighbor = joinInfo.poll();
                     if(neighbor.contentEquals("KEYWORDS")) break;
 
-                    System.out.println("\nadding neighbor: " + neighbor + "\n");
+//                    System.out.println("\nadding neighbor: " + neighbor + "\n");
 
                     Registry registry1 = LocateRegistry.getRegistry(neighbor, Peer.RMI_PORT);
                     Node toAdd = (Node) registry1.lookup(neighbor);
@@ -88,56 +78,8 @@ public class Join {
                 System.out.println("\nJoined!\n\n");
                 System.out.println(peer.node.toString());
 
-                Scanner scan = new Scanner(System.in);
-                while (true){
-                    System.out.print("> ");
-                    String input = scan.nextLine();
-                    String inputs[] = input.split(" ");
-                    String cmd = inputs[0];
-                    String arg = "";
-                    if(inputs.length > 1){
-                        arg = inputs[1];
-                    }
+                peer.spin();
 
-                    String reply = "";
-                    LinkedList<String> path = new LinkedList<String>();
-                    if(cmd.contentEquals("insert")){
-                        reply += "\nRoute to insert node:\n";
-                        if(inputs.length ==2){
-                            reply += peer.insert(arg, path);
-                        }else {
-                            inputs = input.split("\"");
-                            if(inputs.length != 2){
-                                System.out.println("usage: insert \"keyword\"");
-                                continue;
-                            }
-                            reply += peer.insert(inputs[1], path);
-                        }
-                    }else if(cmd.contentEquals("view")){
-                        if(arg.contentEquals("")){
-                            LinkedList<String> viewed = new LinkedList<String>();
-                            reply = peer.view(viewed);
-                        }else {
-                            reply = peer.view(arg);
-                        }
-                    }else if(cmd.contentEquals("leave")){
-                        peer.leave();
-                    }else if(cmd.contentEquals("search")){
-                        reply += "\nSearching Route:";
-                        if(inputs.length ==2){
-                            reply = peer.search(arg, path);
-                        }else {
-                            inputs = input.split("\"");
-                            if(inputs.length != 2){
-                                System.out.println("usage: search \"keyword\"");
-                                continue;
-                            }
-                            reply = peer.search(inputs[1], path);
-                        }
-                    }
-
-                    System.out.println(reply);
-                }
             }catch (Exception e){
                 e.printStackTrace();
             }

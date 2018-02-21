@@ -23,7 +23,7 @@ public class Search {
             LinkedList<String> path =  new LinkedList<String>();
             String reply = node.search(args[0], path);
             String response = "-----------------------------------------\nSearching ...\nIP Route:\n";
-            response += InetAddress.getByName(nodeName).getHostAddress() + "->\n" + reply;
+            response += reply;
             System.out.println(response);
         }catch(Exception e){
             e.printStackTrace();

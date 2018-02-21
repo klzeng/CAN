@@ -62,58 +62,8 @@ public class Boot {
             System.out.println("insert, search, view, leave\n");
             System.out.println("------------------------");
 
-            Scanner scan = new Scanner(System.in);
-            while (true){
-                System.out.print("> ");
-                String input = scan.nextLine();
-                String inputs[] = input.split(" ");
-                String cmd = inputs[0];
-                String arg = "";
-                if(inputs.length > 1){
-                    arg = inputs[1];
-                }
 
-                String reply = "";
-                LinkedList<String> path = new LinkedList<String>();
-                if(cmd.contentEquals("insert")){
-                    reply += "\nRoute to insert node:\n";
-                    if(inputs.length ==2){
-                        arg = arg.split("\"")[1];
-                        reply += bootNode.insert(arg, path);
-                    }else {
-                        inputs = input.split("\"");
-                        if(inputs.length != 2){
-                            System.out.println("usage: insert \"keyword\"");
-                            continue;
-                        }
-                        reply += bootNode.insert(inputs[1], path);
-                    }
-                }else if(cmd.contentEquals("view")){
-                    if(arg.contentEquals("")){
-                        LinkedList<String> viewed = new LinkedList<String>();
-                        reply = bootNode.view(viewed);
-                    }else {
-                        reply = bootNode.view(arg);
-                    }
-                }else if(cmd.contentEquals("leave")){
-                    System.out.println("Issue leave on Bootstrap node make it unscalable(in my implementation).\n");
-                    bootNode.leave();
-                }else if(cmd.contentEquals("search")){
-                    reply += "\nSearching Route:";
-                    if(inputs.length ==2){
-                        reply = bootNode.search(arg, path);
-                    }else {
-                        inputs = input.split("\"");
-                        if(inputs.length != 2){
-                            System.out.println("usage: search \"keyword\"");
-                            continue;
-                        }
-                        reply = bootNode.search(inputs[1], path);
-                    }
-                }
-
-                System.out.println(reply);
-            }
+            bootNode.spin();
         }catch (Exception e){
             System.err.println("BootStrap expection:");
             e.printStackTrace();

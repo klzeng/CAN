@@ -23,7 +23,7 @@ public class Zone{
     }
 
     public float getWidth(){
-        return end_point.x - start_point.y;
+        return end_point.x - start_point.x;
     }
 
     public float getHeight(){

@@ -23,7 +23,7 @@ public class Insert {
             LinkedList<String> path = new LinkedList<String>();
             String reply = node.insert(args[0], path);
             String response = "-----------------------------------------\nIP Route:\n";
-            response += InetAddress.getByName(nodeName).getHostAddress() + "->\n" + reply;
+            response += reply;
             System.out.println(response);
         }catch(Exception e){
             e.printStackTrace();
