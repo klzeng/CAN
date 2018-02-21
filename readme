@@ -1,0 +1,53 @@
+Author: Kunling Zeng
+Email:  kzeng3@gmu.edu
+
+Simple CAN implementation.
+
+
+-----------------------SET UP--------------------------------------------------------
+1)For your convenience - Easy test:
+- Simply go to /scratch/kzeng3/CAN
+- .java and .class files already placed there, you could just start testing.
+
+2) Or, set up test:
+- place all the .java files in an network accessible directory(hydra/scratch)
+- edit file Peer.java:
+-> line19: modify BOOTSTRAP_HOSTNAME as the host name you wanna boot (default node31)
+-> line20: modify the RMI_PORT as the one you wanna use for rmiregistry (default 1100)
+-> if you don't change the Peer.BOOTSTRAP_HOSTNAME, you must boot the CAN on node31.
+- edit server.policy and client.policy: change the codeBase path to your directory.
+- run "javac cp . *.java" to compile the code
+
+----------------------TESTING---------------------------------------------------------
+BOOT:
+-> run command: "java -Djava.security.policy=server.policy Boot"
+-> if you didn't modify Peer.BOOTSTRAP_HOSTNAME, you must boot on node31
+-> make sure the Peer.RMI_PORT(default 1100) is not occupied by other processes.
+-> now you could issue commands: insert "keyword", search "keyword", view <peer>, leave
+
+Join or issue commands on the other nodes
+- login to other nodes
+
+1) to join:
+-> run "java -Djava.security.policy=client.policy Join <node>"
+--> where <node> is the node name of the node you current on
+-> then you could issue commands: insert "keyword", search "keyword", view <peer>, leave
+
+2) issue commands but do not join the CAN:
+-> you don't have to join the CAN and still issue command to check it out if you know the CAN member nodes
+-> command: "java -Djava.security.policy=client.policy Cmd <keyword> <node>"
+--> where Cmd could be: Insert, Search, View (Capitalized)
+--> for Insert, Search, you need to have "keyword", <node> should be name of CAN member node
+--> for View, you could choose to designate view which node, or simply view all nodes in CAN.
+
+---------------------Comments-----------------------------------------------------------
+Bugs exist:
+1) node leave could cause notifying error. which is by trying to notify the neighbors already exit
+-> it actually doesnt hurt the CAN coordinate space
+-> neighbors already moved when left
+-> anyway, havent fully debugged this one
+
+Not yet fully tested:
+1) nodes leave and could not merge, hand over to its smallest neighbor
+2) race condition may exist when issue view(with designate node).
+

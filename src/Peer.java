@@ -18,7 +18,7 @@ import java.util.Scanner;
 public class Peer implements Node{
     final static String BOOTSTRAP_HOSTNAME = "node31";
     final static int RMI_PORT = 1100;
-    final static boolean DUBUG = true;
+    final static boolean DUBUG = false;
 
     Node_Base node;
     LinkedList<Node_Base> neighbors;
@@ -79,11 +79,13 @@ public class Peer implements Node{
         Point destPoint = this.computeHash(keyword);
         if(this.node.inZone(destPoint)){
             if(this.contents.contains(keyword)){
-                String reply = "Found in node:\n";
+                String reply = "-------------------\n";
+                reply += "Found in node:\n";
                 reply += this.node.toString();
+                reply += "-------------------\n";
                 return this.node.IP + "\n" + reply;
             }else {
-                return "Failure in destination";
+                return "Failure. NO Such Keyword.";
             }
 
         }
@@ -121,7 +123,7 @@ public class Peer implements Node{
             for(String each: this.contents){
                 info += each + "\n";
             }
-            info += "---------------------------";
+            info += "---------------------------\n";
             return info;
         }else {
             String info = "something is wrong.\n";
@@ -134,12 +136,29 @@ public class Peer implements Node{
     @Override
     public String view(LinkedList<String> viewed) {
         if(viewed.contains(this.node.name)){
-            return null;
+            return "";
         }else {
             String info = this.view(this.node.name);
             viewed.add(this.node.name);
+            if(Peer.DUBUG){
+                System.out.println("already viewed:");
+                System.out.println(viewed.toString());
+            }
             for(Node_Base each: this.neighbors){
                 try{
+                    Registry registry = LocateRegistry.getRegistry(each.name, Peer.RMI_PORT);
+                    Node next = (Node) registry.lookup(each.name);
+                    if(Peer.DUBUG){ System.out.println("viewing " + each.name);}
+                    info += next.view(each.name);
+                    viewed.add(each.name);
+                }catch (Exception e){
+                    System.out.println("forwarding view request failed:\n");
+                    System.out.println("tried to forward to:" + each.name);
+//                    e.printStackTrace();
+                }
+            }
+            for(Node_Base each: this.neighbors){
+                try {
                     Registry registry = LocateRegistry.getRegistry(each.name, Peer.RMI_PORT);
                     Node next = (Node) registry.lookup(each.name);
                     info += next.view(viewed);
@@ -221,7 +240,9 @@ public class Peer implements Node{
                     }
                     for(String each: toRemoveKW) this.contents.remove(each);
 
-                    System.out.println("\nSuccees!\n--------------------------------\n");
+                    if(Peer.DUBUG){
+                        System.out.println("\nSuccees!\n--------------------------------\n");
+                    }
                     return ret;
                 }
             }
@@ -332,6 +353,9 @@ public class Peer implements Node{
             Node_Base toRemove = null;
             for(Node_Base each : this.neighbors){
                 if( each.name.contentEquals(newNeighbor)) toRemove = each;
+            }
+            if(Peer.DUBUG){
+                if(toRemove == null){ System.out.println("error removing leaving node.");}
             }
             this.neighbors.remove(toRemove);
             return false;
