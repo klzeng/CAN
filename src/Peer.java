@@ -519,8 +519,6 @@ public class Peer implements Node{
         return null;
     }
 
-
-
     @Override
     public String testInvoke(String cmd){
         return "Your command is: " + cmd;
@@ -764,8 +762,8 @@ public class Peer implements Node{
 class Node_Base{
     protected String name;
     protected String IP;
-    protected LinkedList<Zone> zones;
-    protected float area;
+    protected LinkedList<Zone> zones;   // may have more than 1 zone(in case couldn't merge)
+    protected float area;               // util attributes
     protected float xLeft;
     protected float xRight;
     protected float yBottom;

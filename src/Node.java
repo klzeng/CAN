@@ -8,6 +8,8 @@ import java.util.LinkedList;
  */
 public interface Node extends Remote{
 
+    // 5 commands
+
     public String insert(String keyword, LinkedList<String> path) throws RemoteException;
 
     public String search(String keyword, LinkedList<String> path) throws RemoteException;
@@ -19,6 +21,8 @@ public interface Node extends Remote{
     public String view(String peer) throws RemoteException;
 
     public String view(LinkedList<String> viewed) throws RemoteException;
+
+    // helper commands
 
     public void leave() throws RemoteException;
 

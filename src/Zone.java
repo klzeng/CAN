@@ -8,8 +8,8 @@ import java.io.Serializable;
  *
  */
 public class Zone{
-    Point start_point;
-    Point end_point;
+    Point start_point;  // bottom left point
+    Point end_point;    // top right point
 
     // constructor
     public Zone(){
